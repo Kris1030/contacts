@@ -124,9 +124,75 @@
   ::-webkit-scrollbar { width: 6px; }
   ::-webkit-scrollbar-track { background: transparent; }
   ::-webkit-scrollbar-thumb { background: var(--border-hover); border-radius: 3px; }
+
+  /* ── 密碼鎖 ── */
+  #lockScreen {
+    position: fixed; inset: 0; background: var(--bg);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 999; flex-direction: column; gap: 0;
+  }
+  .lock-box {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 16px; padding: 36px 32px; width: 100%; max-width: 340px;
+    box-shadow: var(--shadow-md); text-align: center;
+  }
+  .lock-icon { font-size: 32px; margin-bottom: 12px; }
+  .lock-title { font-size: 16px; font-weight: 600; margin-bottom: 4px; }
+  .lock-sub { font-size: 13px; color: var(--text-muted); margin-bottom: 24px; }
+  .lock-input {
+    width: 100%; height: 44px; border: 1px solid var(--border);
+    border-radius: var(--radius-sm); font-size: 20px; text-align: center;
+    letter-spacing: 8px; font-family: inherit; color: var(--text);
+    background: var(--bg); transition: border-color .15s; margin-bottom: 12px;
+  }
+  .lock-input:focus { outline: none; border-color: var(--accent); }
+  .lock-input.shake { animation: shake .3s; border-color: var(--danger); }
+  @keyframes shake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-6px)} 75%{transform:translateX(6px)} }
+  .lock-err { font-size: 12px; color: var(--danger); height: 16px; margin-bottom: 8px; }
+  .lock-btn { width: 100%; height: 40px; background: var(--accent); color: #fff; border: none; border-radius: var(--radius-sm); font-size: 14px; font-weight: 500; cursor: pointer; font-family: inherit; }
+  .lock-btn:hover { background: #235c41; }
 </style>
 </head>
 <body>
+
+<!-- 密碼鎖畫面 -->
+<div id="lockScreen">
+  <div class="lock-box">
+    <div class="lock-icon">🔒</div>
+    <div class="lock-title">客戶聯絡人管理</div>
+    <div class="lock-sub">請輸入密碼以繼續</div>
+    <input class="lock-input" id="lockInput" type="password" maxlength="20" placeholder="••••"
+      oninput="lockErr.textContent=''"
+      onkeydown="if(event.key==='Enter')checkPassword()">
+    <div class="lock-err" id="lockErr"></div>
+    <button class="lock-btn" onclick="checkPassword()">進入</button>
+  </div>
+</div>
+
+<script>
+(function(){
+  const PWD = '0793';
+  const KEY = 'crm_auth';
+  function checkPassword() {
+    const val = document.getElementById('lockInput').value;
+    if (val === PWD) {
+      sessionStorage.setItem(KEY, '1');
+      document.getElementById('lockScreen').style.display = 'none';
+    } else {
+      const inp = document.getElementById('lockInput');
+      document.getElementById('lockErr').textContent = '密碼錯誤，請再試一次';
+      inp.classList.remove('shake');
+      void inp.offsetWidth;
+      inp.classList.add('shake');
+      inp.value = '';
+    }
+  }
+  window.checkPassword = checkPassword;
+  if (sessionStorage.getItem(KEY) === '1') {
+    document.getElementById('lockScreen').style.display = 'none';
+  }
+})();
+</script>
 
 <header>
   <div class="logo">客戶<span>聯絡人</span>管理</div>
