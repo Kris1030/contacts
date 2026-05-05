@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>客戶聯絡人管理</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;600&display=swap');
+
+  :root {
+    --bg: #F7F6F3;
+    --surface: #FFFFFF;
+    --border: #E5E3DC;
+    --border-hover: #C8C5BB;
+    --text: #1A1917;
+    --text-muted: #888580;
+    --text-hint: #B5B2AA;
+    --accent: #2D6A4F;
+    --danger: #C0392B;
+    --danger-light: #FDECEA;
+    --radius: 10px;
+    --radius-sm: 6px;
+    --shadow: 0 1px 3px rgba(0,0,0,.06);
+    --shadow-md: 0 4px 12px rgba(0,0,0,.08);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Noto Sans TC', sans-serif; background: var(--bg); color: var(--text); font-size: 14px; min-height: 100vh; }
+
+  header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 0 24px; display: flex; align-items: center; justify-content: space-between; height: 56px; position: sticky; top: 0; z-index: 50; }
+  .logo { font-size: 15px; font-weight: 600; letter-spacing: -.3px; }
+  .logo span { color: var(--accent); }
+  .header-right { display: flex; gap: 8px; align-items: center; }
+
+  .sync-status { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-muted); }
+  .sync-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--text-hint); flex-shrink: 0; transition: background .3s; }
+  .sync-dot.ok { background: #22c55e; }
+  .sync-dot.err { background: var(--danger); }
+  .sync-dot.loading { background: #f59e0b; animation: pulse 1s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+
+  .btn { display: inline-flex; align-items: center; gap: 6px; padding: 0 14px; height: 34px; border-radius: var(--radius-sm); font-size: 13px; font-weight: 500; cursor: pointer; border: 1px solid transparent; transition: all .15s; font-family: inherit; }
+  .btn-primary { background: var(--accent); color: #fff; }
+  .btn-primary:hover { background: #235c41; }
+  .btn-outline { background: var(--surface); color: var(--text); border-color: var(--border); }
+  .btn-outline:hover { border-color: var(--border-hover); background: var(--bg); }
+  .btn-ghost { background: none; color: var(--text-muted); border: none; }
+  .btn-ghost:hover { color: var(--text); background: var(--bg); }
+  .btn-danger { background: var(--danger-light); color: var(--danger); border-color: #f5c6c2; }
+  .btn-danger:hover { background: #fad7d4; }
+  .btn-icon { width: 32px; height: 32px; padding: 0; justify-content: center; }
+  .btn:disabled { opacity: .45; cursor: not-allowed; }
+
+  .main { max-width: 1100px; margin: 0 auto; padding: 24px 20px; }
+  .toolbar { display: flex; gap: 10px; align-items: center; margin-bottom: 20px; flex-wrap: wrap; }
+  .search-wrap { flex: 1; min-width: 200px; position: relative; }
+  .search-wrap svg { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); width: 15px; height: 15px; color: var(--text-hint); }
+  .search-wrap input { width: 100%; padding: 0 12px 0 34px; height: 36px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface); font-size: 13px; font-family: inherit; color: var(--text); transition: border-color .15s; }
+  .search-wrap input:focus { outline: none; border-color: var(--accent); }
+  select.filter { height: 36px; padding: 0 10px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface); font-size: 13px; font-family: inherit; color: var(--text); cursor: pointer; }
+
+  .stats { display: flex; gap: 20px; margin-bottom: 16px; font-size: 12px; color: var(--text-muted); flex-wrap: wrap; }
+  .stats b { color: var(--text); font-weight: 600; }
+
+  .tag { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 20px; font-size: 11px; font-weight: 500; white-space: nowrap; }
+  .tag-客戶   { background: #E8F0FE; color: #1A56B0; }
+  .tag-代理商 { background: #E8F5EE; color: #166534; }
+  .tag-廠商   { background: #FEF3E2; color: #92400E; }
+  .tag-其他   { background: #F3F4F6; color: #4B5563; }
+
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 12px; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; cursor: pointer; transition: border-color .15s, box-shadow .15s; box-shadow: var(--shadow); }
+  .card:hover { border-color: var(--border-hover); box-shadow: var(--shadow-md); }
+  .card-top { display: flex; align-items: flex-start; gap: 12px; margin-bottom: 10px; }
+  .avatar { width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 14px; flex-shrink: 0; }
+  .card-title { flex: 1; min-width: 0; }
+  .card-company { font-weight: 600; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 2px; }
+  .card-sub { font-size: 12px; color: var(--text-muted); }
+  .card-fields { display: flex; flex-direction: column; gap: 5px; font-size: 12px; color: var(--text-muted); border-top: 1px solid var(--border); padding-top: 10px; margin-top: 4px; }
+  .card-field { display: flex; align-items: center; gap: 6px; }
+  .card-field svg { width: 12px; height: 12px; flex-shrink: 0; opacity: .5; }
+  .card-note { margin-top: 8px; font-size: 11px; color: var(--text-hint); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-top: 8px; border-top: 1px solid var(--border); }
+
+  .empty { grid-column: 1/-1; text-align: center; padding: 60px 20px; color: var(--text-muted); }
+  .empty p { margin-top: 8px; font-size: 13px; }
+
+  .skeleton { animation: shimmer 1.2s infinite; background: linear-gradient(90deg, var(--border) 25%, var(--bg) 50%, var(--border) 75%); background-size: 200% 100%; border-radius: var(--radius-sm); }
+  @keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+  .skel-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; }
+  .skel-line { height: 12px; margin-bottom: 8px; }
+
+  .overlay { position: fixed; inset: 0; background: rgba(0,0,0,.35); display: flex; align-items: center; justify-content: center; z-index: 200; padding: 16px; opacity: 0; pointer-events: none; transition: opacity .2s; }
+  .overlay.show { opacity: 1; pointer-events: all; }
+  .modal { background: var(--surface); border-radius: 14px; width: 100%; max-width: 500px; max-height: 90vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,.2); transform: translateY(12px); transition: transform .2s; }
+  .overlay.show .modal { transform: translateY(0); }
+  .modal-header { display: flex; align-items: center; justify-content: space-between; padding: 18px 20px 14px; border-bottom: 1px solid var(--border); position: sticky; top: 0; background: var(--surface); border-radius: 14px 14px 0 0; z-index: 1; }
+  .modal-title { font-weight: 600; font-size: 15px; }
+  .modal-body { padding: 20px; }
+  .modal-footer { display: flex; justify-content: flex-end; gap: 8px; padding: 14px 20px; border-top: 1px solid var(--border); position: sticky; bottom: 0; background: var(--surface); border-radius: 0 0 14px 14px; }
+
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px 12px; }
+  .form-grid .full { grid-column: 1/-1; }
+  .field label { display: block; font-size: 11px; font-weight: 600; color: var(--text-muted); margin-bottom: 5px; letter-spacing: .4px; text-transform: uppercase; }
+  .field input, .field select, .field textarea { width: 100%; padding: 0 10px; height: 36px; border: 1px solid var(--border); border-radius: var(--radius-sm); font-size: 13px; font-family: inherit; color: var(--text); background: var(--surface); transition: border-color .15s; }
+  .field input:focus, .field select:focus, .field textarea:focus { outline: none; border-color: var(--accent); }
+  .field textarea { height: 72px; padding: 8px 10px; resize: vertical; }
+  .field input.error { border-color: var(--danger); }
+
+  .detail-header { display: flex; align-items: center; gap: 14px; margin-bottom: 20px; }
+  .detail-avatar { width: 52px; height: 52px; border-radius: 12px; font-size: 18px; }
+  .detail-name { font-weight: 600; font-size: 17px; }
+  .detail-sub { font-size: 13px; color: var(--text-muted); margin-top: 2px; }
+  .detail-row { display: flex; padding: 8px 0; border-bottom: 1px solid var(--border); gap: 12px; font-size: 13px; }
+  .detail-row:last-child { border-bottom: none; }
+  .detail-label { color: var(--text-muted); min-width: 80px; flex-shrink: 0; }
+  .detail-val { color: var(--text); word-break: break-all; }
+  a.detail-link { color: #1A56B0; text-decoration: none; }
+  a.detail-link:hover { text-decoration: underline; }
+
+  .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(80px); background: var(--text); color: var(--surface); padding: 10px 18px; border-radius: 8px; font-size: 13px; z-index: 999; transition: transform .3s, opacity .3s; opacity: 0; pointer-events: none; white-space: nowrap; }
+  .toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+  .toast.err { background: var(--danger); }
+
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border-hover); border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">客戶<span>聯絡人</span>管理</div>
+  <div class="header-right">
+    <div class="sync-status">
+      <div class="sync-dot" id="syncDot"></div>
+      <span id="syncText">連線中…</span>
+    </div>
+    <button class="btn btn-outline" onclick="loadContacts()">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" width="14" height="14"><path d="M14 8A6 6 0 1 1 8 2c1.8 0 3.4.8 4.5 2M14 2v4h-4"/></svg>
+      同步
+    </button>
+    <button class="btn btn-primary" onclick="openAdd()">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><path d="M8 3v10M3 8h10"/></svg>
+      新增聯絡人
+    </button>
+  </div>
+</header>
+
+<div class="main">
+  <div class="toolbar">
+    <div class="search-wrap">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="6.5" cy="6.5" r="4"/><path d="M10 10l3 3"/></svg>
+      <input type="text" id="search" placeholder="搜尋公司、姓名、電話、帳號…" oninput="render()">
+    </div>
+    <select class="filter" id="filterTag" onchange="render()">
+      <option value="">全部類型</option>
+      <option>客戶</option><option>代理商</option><option>廠商</option><option>其他</option>
+    </select>
+    <select class="filter" id="sortBy" onchange="render()">
+      <option value="added">依新增順序</option>
+      <option value="company">依公司名稱</option>
+    </select>
+  </div>
+  <div class="stats" id="stats"></div>
+  <div class="grid" id="grid"></div>
+</div>
+
+<!-- Form Modal -->
+<div class="overlay" id="formOverlay" onclick="overlayClick(event,'formOverlay')">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title" id="formTitle">新增聯絡人</span>
+      <button class="btn btn-ghost btn-icon" onclick="close_('formOverlay')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <div class="field full">
+          <label>公司名稱 <span style="color:var(--danger)">*</span></label>
+          <input id="f-company" type="text" placeholder="例：韻達快遞">
+        </div>
+        <div class="field">
+          <label>客戶類型</label>
+          <select id="f-tag"><option>客戶</option><option>代理商</option><option>廠商</option><option>其他</option></select>
+        </div>
+        <div class="field">
+          <label>客戶帳號 / 編號</label>
+          <input id="f-account" type="text" placeholder="例：24564443">
+        </div>
+        <div class="field">
+          <label>聯絡人姓名</label>
+          <input id="f-name" type="text" placeholder="例：王小明">
+        </div>
+        <div class="field">
+          <label>職稱</label>
+          <input id="f-title" type="text" placeholder="例：業務專員">
+        </div>
+        <div class="field">
+          <label>電話</label>
+          <input id="f-phone" type="text" placeholder="例：02-1234-5678">
+        </div>
+        <div class="field">
+          <label>手機</label>
+          <input id="f-mobile" type="text" placeholder="例：0912-345-678">
+        </div>
+        <div class="field full">
+          <label>Email</label>
+          <input id="f-email" type="email" placeholder="例：contact@company.com">
+        </div>
+        <div class="field full">
+          <label>LINE ID</label>
+          <input id="f-line" type="text" placeholder="例：@wangxiaomin">
+        </div>
+        <div class="field full">
+          <label>備註</label>
+          <textarea id="f-note" placeholder="合約狀態、特殊需求、跟進事項…"></textarea>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="close_('formOverlay')">取消</button>
+      <button class="btn btn-primary" id="saveBtn" onclick="saveContact()">儲存</button>
+    </div>
+  </div>
+</div>
+
+<!-- Detail Modal -->
+<div class="overlay" id="detailOverlay" onclick="overlayClick(event,'detailOverlay')">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title">聯絡人詳細資訊</span>
+      <button class="btn btn-ghost btn-icon" onclick="close_('detailOverlay')">✕</button>
+    </div>
+    <div class="modal-body" id="detailBody"></div>
+    <div class="modal-footer" style="justify-content:space-between">
+      <button class="btn btn-danger" id="deleteBtn" onclick="deleteContact()">刪除</button>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-outline" onclick="close_('detailOverlay')">關閉</button>
+        <button class="btn btn-primary" onclick="editContact()">編輯</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const NOTION_TOKEN = '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';
+const DATABASE_ID  = '167521ce-891a-4571-840b-1eca20e9de09';
+
+const COLORS = [
+  ['#E8F0FE','#1A56B0'],['#E8F5EE','#166534'],['#FEF3E2','#92400E'],
+  ['#EEEDFE','#3C3489'],['#FEE2E2','#991B1B'],['#ECFDF5','#065F46'],
+  ['#FFF7ED','#9A3412'],['#EFF6FF','#1E40AF'],
+];
+
+let contacts = [];
+let editing  = null;
+let viewing  = null;
+
+function colorFor(str) {
+  let h = 0;
+  for (let i = 0; i < (str||'').length; i++) h = (h*31 + str.charCodeAt(i)) % COLORS.length;
+  return COLORS[Math.abs(h)];
+}
+function initials(name, company) {
+  const s = (name||company||'?').trim();
+  return /[\u4e00-\u9fff]/.test(s) ? s.slice(0,2) : s.slice(0,2).toUpperCase();
+}
+function esc(s) {
+  return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+function setSyncStatus(state, text) {
+  document.getElementById('syncDot').className = 'sync-dot ' + state;
+  document.getElementById('syncText').textContent = text;
+}
+function showToast(msg, isErr) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast show' + (isErr?' err':'');
+  clearTimeout(t._timer);
+  t._timer = setTimeout(()=> t.className='toast', 2800);
+}
+
+async function notionFetch(method, path, body) {
+  const target = 'https://api.notion.com/v1' + path;
+  // Use corsproxy.io — works from GitHub Pages (HTTPS origin)
+  const url = 'https://corsproxy.io/?' + encodeURIComponent(target);
+  const opts = {
+    method,
+    headers: {
+      'Authorization': 'Bearer ' + NOTION_TOKEN,
+      'Notion-Version': '2022-06-28',
+      'Content-Type': 'application/json',
+    },
+  };
+  if (body) opts.body = JSON.stringify(body);
+  const res = await fetch(url, opts);
+  const data = await res.json();
+  if (data.object === 'error') throw new Error(data.message);
+  return data;
+}
+
+function parseContact(page) {
+  const p = page.properties;
+  const text = prop => prop?.rich_text?.[0]?.plain_text || prop?.title?.[0]?.plain_text || '';
+  return {
+    id:      page.id,
+    company: text(p['公司名稱']),
+    tag:     p['客戶類型']?.select?.name || '其他',
+    account: text(p['客戶帳號']),
+    name:    text(p['聯絡人']),
+    title:   text(p['職稱']),
+    phone:   p['電話']?.phone_number || '',
+    mobile:  p['手機']?.phone_number || '',
+    email:   p['Email']?.email || '',
+    line:    text(p['LINE ID']),
+    note:    text(p['備註']),
+  };
+}
+
+function buildProps(c) {
+  return {
+    '公司名稱': { title:      [{ text: { content: c.company } }] },
+    '客戶類型': { select:     c.tag ? { name: c.tag } : null },
+    '客戶帳號': { rich_text:  [{ text: { content: c.account||'' } }] },
+    '聯絡人':   { rich_text:  [{ text: { content: c.name||''    } }] },
+    '職稱':     { rich_text:  [{ text: { content: c.title||''   } }] },
+    '電話':     { phone_number: c.phone||null  },
+    '手機':     { phone_number: c.mobile||null },
+    'Email':    { email:       c.email||null   },
+    'LINE ID':  { rich_text:  [{ text: { content: c.line||'' } }] },
+    '備註':     { rich_text:  [{ text: { content: c.note||'' } }] },
+  };
+}
+
+function showSkeletons() {
+  document.getElementById('grid').innerHTML = Array(6).fill(0).map(()=>`
+    <div class="skel-card">
+      <div style="display:flex;gap:12px;margin-bottom:12px">
+        <div class="skeleton" style="width:40px;height:40px;border-radius:10px;flex-shrink:0"></div>
+        <div style="flex:1">
+          <div class="skeleton skel-line" style="width:70%"></div>
+          <div class="skeleton skel-line" style="width:45%"></div>
+        </div>
+      </div>
+      <div class="skeleton skel-line" style="width:90%"></div>
+      <div class="skeleton skel-line" style="width:60%"></div>
+    </div>`).join('');
+}
+
+async function loadContacts() {
+  setSyncStatus('loading','同步中…');
+  showSkeletons();
+  try {
+    const data = await notionFetch('POST', `/databases/${DATABASE_ID}/query`, {
+      sorts: [{ timestamp:'created_time', direction:'descending' }],
+      page_size: 100,
+    });
+    contacts = data.results.map(parseContact);
+    setSyncStatus('ok', `已同步・${contacts.length} 筆`);
+    render();
+  } catch(e) {
+    setSyncStatus('err','同步失敗');
+    showToast('無法連線 Notion：' + e.message, true);
+    document.getElementById('grid').innerHTML = `<div class="empty"><div style="font-size:28px">⚠️</div><p>${esc(e.message)}</p></div>`;
+  }
+}
+
+function render() {
+  const q  = (document.getElementById('search').value||'').toLowerCase();
+  const ft = document.getElementById('filterTag').value;
+  const sort = document.getElementById('sortBy').value;
+
+  let list = contacts.filter(c => {
+    const match = !q || (c.company+c.name+c.phone+c.mobile+c.email+c.account+c.line).toLowerCase().includes(q);
+    return match && (!ft || c.tag===ft);
+  });
+  if (sort==='company') list.sort((a,b)=>(a.company||'').localeCompare(b.company||'','zh-TW'));
+
+  const types = ['客戶','代理商','廠商','其他'];
+  document.getElementById('stats').innerHTML =
+    `<span>共 <b>${contacts.length}</b> 筆</span>` +
+    types.map(t=>{ const n=contacts.filter(c=>c.tag===t).length; return n?`<span>${t} <b>${n}</b></span>`:''; }).join('');
+
+  const grid = document.getElementById('grid');
+  if (!list.length) {
+    grid.innerHTML = `<div class="empty"><div style="font-size:32px">📋</div><p>${contacts.length?'找不到符合的聯絡人':'還沒有聯絡人，點「新增聯絡人」開始吧！'}</p></div>`;
+    return;
+  }
+  grid.innerHTML = list.map(c => {
+    const [bg,fg] = colorFor(c.company||c.name||'?');
+    return `<div class="card" onclick="viewContact('${c.id}')">
+      <div class="card-top">
+        <div class="avatar" style="background:${bg};color:${fg}">${initials(c.name,c.company)}</div>
+        <div class="card-title">
+          <div class="card-company">${esc(c.company||'—')}</div>
+          <div class="card-sub">${esc(c.name||'')}${c.name&&c.title?' · ':''}${esc(c.title||'')}</div>
+        </div>
+        <span class="tag tag-${c.tag}">${c.tag}</span>
+      </div>
+      <div class="card-fields">
+        ${c.phone?`<div class="card-field"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 2.5c0 7.456 6.044 13.5 13.5 13.5V13l-3-1-1 1c-1.5-.5-3-1.5-4-2.5S6 8.5 5.5 7l1-1L5.5 3H3L2 2.5z"/></svg>${esc(c.phone)}</div>`:''}
+        ${c.email?`<div class="card-field"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="3" width="14" height="10" rx="1.5"/><path d="M1 5l7 5 7-5"/></svg>${esc(c.email)}</div>`:''}
+        ${c.account?`<div class="card-field"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="2" width="12" height="12" rx="1.5"/><path d="M5 6h6M5 10h4"/></svg>帳號：${esc(c.account)}</div>`:''}
+      </div>
+      ${c.note?`<div class="card-note">${esc(c.note)}</div>`:''}
+    </div>`;
+  }).join('');
+}
+
+function openAdd() {
+  editing = null;
+  document.getElementById('formTitle').textContent = '新增聯絡人';
+  ['company','name','title','phone','mobile','email','account','line','note'].forEach(k=>{
+    document.getElementById('f-'+k).value='';
+    document.getElementById('f-'+k).classList.remove('error');
+  });
+  document.getElementById('f-tag').value = '客戶';
+  open_('formOverlay');
+}
+
+function editContact() {
+  close_('detailOverlay');
+  const c = contacts.find(x=>x.id===viewing);
+  if (!c) return;
+  editing = c.id;
+  document.getElementById('formTitle').textContent = '編輯聯絡人';
+  ['company','name','title','phone','mobile','email','account','line','note'].forEach(k=>{
+    document.getElementById('f-'+k).value = c[k]||'';
+  });
+  document.getElementById('f-tag').value = c.tag||'客戶';
+  open_('formOverlay');
+}
+
+async function saveContact() {
+  const company = document.getElementById('f-company').value.trim();
+  if (!company) { document.getElementById('f-company').classList.add('error'); document.getElementById('f-company').focus(); return; }
+  const c = {
+    company, tag:     document.getElementById('f-tag').value,
+    name:    document.getElementById('f-name').value.trim(),
+    title:   document.getElementById('f-title').value.trim(),
+    phone:   document.getElementById('f-phone').value.trim(),
+    mobile:  document.getElementById('f-mobile').value.trim(),
+    email:   document.getElementById('f-email').value.trim(),
+    account: document.getElementById('f-account').value.trim(),
+    line:    document.getElementById('f-line').value.trim(),
+    note:    document.getElementById('f-note').value.trim(),
+  };
+  const btn = document.getElementById('saveBtn');
+  btn.disabled=true; btn.textContent='儲存中…';
+  setSyncStatus('loading','儲存中…');
+  try {
+    if (editing) {
+      await notionFetch('PATCH', `/pages/${editing}`, { properties: buildProps(c) });
+      const idx = contacts.findIndex(x=>x.id===editing);
+      if (idx>=0) contacts[idx] = { ...contacts[idx], ...c };
+      showToast('✓ 已更新');
+    } else {
+      const res = await notionFetch('POST', '/pages', { parent:{ database_id: DATABASE_ID }, properties: buildProps(c) });
+      contacts.unshift(parseContact(res));
+      showToast('✓ 已新增');
+    }
+    setSyncStatus('ok', `已同步・${contacts.length} 筆`);
+    close_('formOverlay');
+    render();
+  } catch(e) {
+    setSyncStatus('err','儲存失敗');
+    showToast('儲存失敗：'+e.message, true);
+  } finally {
+    btn.disabled=false; btn.textContent='儲存';
+  }
+}
+
+function viewContact(id) {
+  viewing = id;
+  const c = contacts.find(x=>x.id===id);
+  if (!c) return;
+  const [bg,fg] = colorFor(c.company||c.name||'?');
+  const rows = [
+    ['類型',   `<span class="tag tag-${c.tag}">${c.tag}</span>`],
+    ['聯絡人', esc(c.name)],
+    ['職稱',   esc(c.title)],
+    ['電話',   c.phone  ? `<a href="tel:${c.phone}"   class="detail-link">${esc(c.phone)}</a>`  : null],
+    ['手機',   c.mobile ? `<a href="tel:${c.mobile}"  class="detail-link">${esc(c.mobile)}</a>` : null],
+    ['Email',  c.email  ? `<a href="mailto:${c.email}" class="detail-link">${esc(c.email)}</a>` : null],
+    ['帳號',   esc(c.account)],
+    ['LINE',   esc(c.line)],
+    ['備註',   esc(c.note)],
+  ].filter(r=>r[1]);
+  document.getElementById('detailBody').innerHTML = `
+    <div class="detail-header">
+      <div class="avatar detail-avatar" style="background:${bg};color:${fg}">${initials(c.name,c.company)}</div>
+      <div>
+        <div class="detail-name">${esc(c.company||'—')}</div>
+        <div class="detail-sub">${esc(c.name||'')}${c.name&&c.title?' · ':''}${esc(c.title||'')}</div>
+      </div>
+    </div>
+    ${rows.map(([l,v])=>`<div class="detail-row"><span class="detail-label">${l}</span><span class="detail-val">${v}</span></div>`).join('')}`;
+  open_('detailOverlay');
+}
+
+async function deleteContact() {
+  const c = contacts.find(x=>x.id===viewing);
+  if (!c || !confirm(`確定要刪除「${c.company}」嗎？`)) return;
+  const btn = document.getElementById('deleteBtn');
+  btn.disabled=true;
+  setSyncStatus('loading','刪除中…');
+  try {
+    await notionFetch('PATCH', `/pages/${viewing}`, { archived: true });
+    contacts = contacts.filter(x=>x.id!==viewing);
+    setSyncStatus('ok', `已同步・${contacts.length} 筆`);
+    showToast('✓ 已刪除');
+    close_('detailOverlay');
+    render();
+  } catch(e) {
+    setSyncStatus('err','刪除失敗');
+    showToast('刪除失敗：'+e.message, true);
+  } finally { btn.disabled=false; }
+}
+
+function open_(id)  { document.getElementById(id).classList.add('show'); }
+function close_(id) { document.getElementById(id).classList.remove('show'); }
+function overlayClick(e,id) { if(e.target.id===id) close_(id); }
+
+document.addEventListener('keydown', e=>{
+  if (e.key==='Escape') { close_('detailOverlay'); close_('formOverlay'); }
+  if ((e.ctrlKey||e.metaKey) && e.key==='n') { e.preventDefault(); openAdd(); }
+});
+
+loadContacts();
+</script>
+</body>
+</html>
